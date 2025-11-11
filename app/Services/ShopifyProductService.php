@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\DTOs\ProductDTO;
 use App\Exceptions\ShopifyApiException;
 
 class ShopifyProductService
@@ -10,9 +9,8 @@ class ShopifyProductService
     public function __construct(private ShopifyGraphQLClient $client) {}
 
     /** productCreate */
-  // app/Services/Shopify/ShopifyProductService.php
 
-    public function createProduct(string $shop, string $token, ProductDTO $product): array
+    public function createProduct(string $shop, string $token, $product): array
     {
         $mutation = <<<'GQL'
         mutation productCreate($product: ProductCreateInput!, $media: [CreateMediaInput!]) {
@@ -56,21 +54,15 @@ class ShopifyProductService
 
         $productPayload = [
             'title'           => $product->title,
-            'descriptionHtml' => $product->bodyHtml,
+            'description'     => $product->description,
             'vendor'          => $product->vendor,
             'productType'     => $product->productType,
-            'tags'            => $product->tags,
             'productOptions'  => $productOptions,  // <-- এখন values সহ
         ];
 
-        // ইমেজ চাইলে productCreate-এই পাঠানো যায় (async attach)
-        $media = [];
-        // (আপনার যদি প্রোডাক্ট-লেভেলের ইমেজ থাকে, এখানে push করবেন)
-        // $media[] = ['mediaContentType' => 'IMAGE', 'originalSource' => 'https://...'];
 
         $json = $this->client->query($shop, $token, $mutation, [
             'product' => $productPayload,
-            'media'   => $media ?: null,
         ]);
 
         $errors = $json['data']['productCreate']['userErrors'] ?? [];

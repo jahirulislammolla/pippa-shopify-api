@@ -2,7 +2,6 @@
 
 namespace App\Repositories;
 
-use App\DTOs\ProductDTO;
 use App\Exceptions\ShopifyApiException;
 use App\Services\ShopifyProductService;
 use Illuminate\Support\Arr;
@@ -12,7 +11,7 @@ class ShopifyProductRepository implements ShopifyProductRepositoryInterface
 {
     public function __construct(private ShopifyProductService $service) {}
 
-    public function createProductWithVariantsAndImages(ProductDTO $product, string $shop, string $token): array
+    public function createProductWithVariantsAndImages( $product, string $shop, string $token): array
     {
         // 1) create product + variants
         $created = $this->service->createProduct($shop, $token, $product);
@@ -31,12 +30,8 @@ class ShopifyProductRepository implements ShopifyProductRepositoryInterface
         });
 
         // collect image list from request variants
-        $imageRequests = [];
-        foreach ($product->variants as $v) {
-            if ($v->image && $v->image->src) {
-                $imageRequests[] = ['src' => $v->image->src, 'alt' => $v->image->alt];
-            }
-        }
+        $imageRequests = $product['images'] ?? [];
+
 
         // 2) attach images (optional)
         $imageIdMap = collect();
@@ -50,19 +45,7 @@ class ShopifyProductRepository implements ShopifyProductRepositoryInterface
             }
         }
 
-        // 3) link variant.imageId (order-based mapping)
-        $imgIndex = 0;
-        foreach ($product->variants as $v) {
-            if ($v->image && $v->image->src) {
-                $variantId = $variantMap[$v->sku] ?? null;
-                $imageId = $imageIdMap->get($imgIndex);
-                $imgIndex++;
 
-                if ($variantId && $imageId) {
-                    $this->service->setVariantImage($shop, $token, $variantId, $imageId);
-                }
-            }
-        }
 
         return [
             'product_id' => $productId,

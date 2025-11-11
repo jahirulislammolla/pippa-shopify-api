@@ -1,6 +1,6 @@
 # Laravel Shopify Product API (GraphQL 2025-07)
 
-Shopify Admin GraphQL (2025-07) ব্যবহার করে **Product + Variants + Images** তৈরি করার Laravel REST API।  
+Shopify Admin GraphQL (2025-07) ব্যবহার করে **Product + Variants + Images** তৈরি করার Laravel REST API।
 **Repository Pattern + DI**, **Form Request Validation**, **Guzzle error handling**, এবং **PHPUnit test** অন্তর্ভুক্ত।
 
 ## ✨ Features
@@ -22,7 +22,7 @@ Shopify Admin GraphQL (2025-07) ব্যবহার করে **Product + Vari
 -   Shopify **store** (live বা development)
 -   Custom app এর **Admin API access token**
 -   স্টোর ডোমেইন: `your-store.myshopify.com`
--   App scopes (minimum): `write_products`  
+-   App scopes (minimum): `write_products`
     (ইমেজ URL থেকে মিডিয়া করলে সাধারণত `write_files`/`read_files`ও লাগতে পারে)
 
 ---
@@ -59,7 +59,7 @@ php artisan serve
 ```json
 {
   "title": "Cotton T-Shirt Premium",
-  "body_html": "<p>High quality premium cotton t-shirt</p>",
+  "description": "<p>High quality premium cotton t-shirt</p>",
   "vendor": "My Brand",
   "product_type": "Apparel",
   "options": [
@@ -181,7 +181,7 @@ return [
 ];
 ```
 
-DI binding: `App\Providers\RepositoryServiceProvider`  
+DI binding: `App\Providers\RepositoryServiceProvider`
 `config/app.php` → providers এ যোগ করুন।
 
 ---

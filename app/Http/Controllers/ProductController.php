@@ -2,9 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\DTOs\ImageDTO;
-use App\DTOs\ProductDTO;
-use App\DTOs\VariantDTO;
 use App\Exceptions\ShopifyApiException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\StoreShopifyProductRequest;
@@ -31,34 +28,8 @@ class ProductController extends Controller
 
         $data = $request->validated();
 
-        $variants = [];
-        foreach ($data['variants'] as $v) {
-            $img = null;
-            if (!empty($v['image']['src'])) {
-                $img = new ImageDTO($v['image']['src'], $v['image']['alt'] ?? null);
-            }
-
-            $variants[] = new VariantDTO(
-                sku: $v['sku'],
-                price: (string) $v['price'],
-                optionValues: $v['option_values'],
-                inventoryQuantity: $v['inventory_quantity'] ?? null,
-                image: $img
-            );
-        }
-
-        $dto = new ProductDTO(
-            title: $data['title'],
-            bodyHtml: $data['body_html'] ?? null,
-            vendor: $data['vendor'] ?? null,
-            productType: $data['product_type'] ?? null,
-            tags: $data['tags'] ?? null,
-            options: $data['options'] ?? null,
-            variants: $variants
-        );
-
         try {
-            $res = $this->repo->createProductWithVariantsAndImages($dto, $shop, $token);
+            $res = $this->repo->createProductWithVariantsAndImages($data, $shop, $token);
 
             return response()->json([
                 'success' => true,

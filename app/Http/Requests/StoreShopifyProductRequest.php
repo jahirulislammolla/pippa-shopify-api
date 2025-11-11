@@ -15,13 +15,10 @@ class StoreShopifyProductRequest extends FormRequest
     {
         return [
             'title' => ['required', 'string', 'max:255'],
-            'body_html' => ['nullable', 'string'],
+            'description' => ['nullable', 'string'],
             'vendor' => ['nullable', 'string', 'max:255'],
             'product_type' => ['nullable', 'string', 'max:255'],
-            'tags' => ['nullable', 'array'],
-            'tags.*' => ['string', 'max:255'],
 
-            // এখন options ফ্রি-শেপ: string[] অথবা {name, values[]}[]
             'options' => ['required', 'array', 'min:1'],
 
             'variants' => ['required', 'array', 'min:1'],
@@ -30,8 +27,10 @@ class StoreShopifyProductRequest extends FormRequest
             'variants.*.inventory_quantity' => ['nullable', 'integer', 'min:0'],
             'variants.*.option_values' => ['required', 'array', 'min:1'],
             'variants.*.option_values.*' => ['string', 'max:255'],
-            'variants.*.image.src' => ['nullable', 'url'],
-            'variants.*.image.alt' => ['nullable', 'string', 'max:255'],
+
+            'images' => ['nullable', 'array'],
+            'images.*.src' => ['nullable', 'url'],
+            'images.*.alt' => ['nullable', 'string', 'max:255'],
         ];
     }
 
@@ -40,13 +39,8 @@ class StoreShopifyProductRequest extends FormRequest
      */
     protected function prepareForValidation(): void
     {
-        $opts = $this->input('options', []);
 
-        // case A: options = ["Size","Color"]
-        if (is_array($opts) && (empty($opts) || is_string(reset($opts)))) {
-            // nothing to do
-            return;
-        }
+        $opts = $this['options'] ?? [];
 
         // case B: options = [{ name:"Size", values:[{name:"S"}] }, ...]
         if (is_array($opts) && is_array(reset($opts))) {
@@ -55,11 +49,7 @@ class StoreShopifyProductRequest extends FormRequest
 
             foreach ($opts as $i => $opt) {
                 $name = $opt['name'] ?? null;
-                if ($name) {
-                    $names[] = $name;
-                } else {
-                    $names[] = "Option".($i+1);
-                }
+                $names[] = $name !== '' ? $name : 'Option'.($i+1);
 
                 $vals = [];
                 if (!empty($opt['values']) && is_array($opt['values'])) {
