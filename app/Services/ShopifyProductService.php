@@ -8,58 +8,39 @@ class ShopifyProductService
 {
     public function __construct(private ShopifyGraphQLClient $client) {}
 
-    /** productCreate */
+    /** productCreate
+     *  https://shopify.dev/docs/api/admin-graphql/2025-07/mutations/productcreate
+     */
 
     public function createProduct(string $shop, string $token, $product): array
     {
         $mutation = <<<'GQL'
-        mutation productCreate($product: ProductCreateInput!, $media: [CreateMediaInput!]) {
-        productCreate(product: $product, media: $media) {
-            product {
-            id
-            handle
-            options { id name optionValues { id name } }
-            variants(first: 1) { nodes { id title } } # শুধু ডিফল্ট ভ্যারিয়েন্ট থাকবে
+        mutation productCreate($product: ProductCreateInput!) {
+            productCreate($product: $product) {
+                product {
+                    id
+                    title
+                    vendor
+                    options {
+                    id
+                    name
+                    }
+                }
+                userErrors {
+                    field
+                    message
+                }
             }
-            userErrors { field message }
-        }
         }
         GQL;
 
-        // productOptions ==> [{ name, values: [{name}, ...] }]
-        $productOptions = [];
-        $optionNames = $product->options ?? [];                // e.g. ["Size","Color"]
-
-        // variants থেকে প্রতি অপশনের ইউনিক ভ্যালু বের করা
-        $optionValuesByIndex = [];
-        foreach ($product->variants as $v) {                   // $v->optionValues e.g. ["S","Black"]
-            foreach ($v->optionValues as $idx => $val) {
-                $optionValuesByIndex[$idx][$val] = true;       // set-like
-            }
-        }
-
-        foreach ($optionNames as $idx => $name) {
-            $vals = array_keys($optionValuesByIndex[$idx] ?? []);
-            // Shopify নতুন স্কিমায় value অবজেক্ট লাগে: { name: "S" }
-            $valueObjs = array_map(fn($x) => ['name' => (string)$x], $vals);
-            // যদি একেবারে কোনো ভ্যারিয়েন্ট না থাকে, অন্তত ১টা ডিফল্ট ভ্যালু দিন
-            if (empty($valueObjs)) {
-                $valueObjs = [['name' => 'Default']];
-            }
-            $productOptions[] = [
-                'name' => $name,
-                'values' => $valueObjs,
-            ];
-        }
-
         $productPayload = [
             'title'           => $product->title,
-            'description'     => $product->description,
-            'vendor'          => $product->vendor,
-            'productType'     => $product->productType,
-            'productOptions'  => $productOptions,  // <-- এখন values সহ
+            'descriptionHtml'     => $product->description ?? '',
+            'vendor'          => $product->vendor ?? '',
+            'productType'     => $product->productType ?? '',
+            'productOptions'  => $$product->options ?? [],  // <-- এখন values সহ
         ];
-
 
         $json = $this->client->query($shop, $token, $mutation, [
             'product' => $productPayload,
@@ -74,7 +55,9 @@ class ShopifyProductService
     }
 
 
-    /** productCreateMedia (images) */
+    /** productCreateMedia (images)
+     * https://shopify.dev/docs/api/admin-graphql/2025-07/mutations/productcreatemedia
+     */
     public function attachImages(string $shop, string $token, string $productId, array $images): array
     {
         if (empty($images)) {
@@ -90,15 +73,10 @@ class ShopifyProductService
         }
         GQL;
 
-        $media = collect($images)->map(fn ($img) => [
-            'mediaContentType' => 'IMAGE',
-            'originalSource' => $img['src'],
-            'alt' => $img['alt'] ?? null,
-        ])->values()->all();
 
         $json = $this->client->query($shop, $token, $mutation, [
             'productId' => $productId,
-            'media' => $media,
+            'media' => $images,
         ]);
 
         $mediaErrors = $json['data']['productCreateMedia']['mediaUserErrors'] ?? [];
@@ -109,20 +87,35 @@ class ShopifyProductService
         return $json['data']['productCreateMedia']['media'] ?? [];
     }
 
-    /** productVariantUpdate (link imageId) */
-    public function setVariantImage(string $shop, string $token, string $variantId, string $imageId): array
+    /** productVariantUpdate
+     *  https://shopify.dev/docs/api/admin-graphql/latest/mutations/productVariantsBulkCreate
+     */
+    public function createBulkVariants(string $shop, string $token, string $productId, array $productVariantInput): array
     {
         $mutation = <<<'GQL'
-mutation productVariantUpdate($input: ProductVariantInput!) {
-  productVariantUpdate(input: $input) {
-    productVariant { id image { id alt } }
-    userErrors { field message }
-  }
-}
-GQL;
+        mutation productVariantUpdate($productId: ID!, $variants: [CreateInputVariants!]!) {
+            productVariantsBulkCreate(productId: $productId, variants: $variants) {
+                productVariants {
+                    id
+                    title
+                    inventoryItem
+                    inventoryQuantity
+                    selectedOptions {
+                    name
+                    value
+                    }
+                }
+                userErrors {
+                    field
+                    message
+                }
+            }
+        }
+        GQL;
 
         $json = $this->client->query($shop, $token, $mutation, [
-            'input' => ['id' => $variantId, 'imageId' => $imageId],
+            'productId' => $productId,
+            'variants' => $productVariantInput,
         ]);
 
         $errors = $json['data']['productVariantUpdate']['userErrors'] ?? [];
@@ -131,5 +124,54 @@ GQL;
         }
 
         return $json['data']['productVariantUpdate']['productVariant'] ?? [];
+    }
+
+    public function setInventories(string $shop, string $token, array $inventoryMap): bool
+    {
+        $q = <<<'GQL'
+        { shop { primaryLocation { id name } } }
+        GQL;
+
+        $res = $this->client->query($shop, $token, $q);
+        $locationId = $res['data']['shop']['primaryLocation']['id'] ?? null;
+        if (!empty($locationId))
+        {
+            foreach ($inventoryMap as $inventoryItemId => $availableQuantity) {
+                $this->setInventory($shop, $token, $inventoryItemId, $locationId, $availableQuantity);
+            }
+            return true;
+        }
+        return false;
+    }
+      /** inventoryAdjustQuantity
+     *  https://shopify.dev/docs/api/admin-graphql/2025-07/mutations/inventoryactivate
+     */
+    private function setInventory(string $shop, string $token, string $inventoryItemId, string $locationId, int $availableQuantity): void
+    {
+        $mutation = <<<'GQL'
+        mutation inventoryAdjustQuantity($inventoryItemId: ID!, $locationId: ID!, $availableQuantity: Int!) {
+            inventoryAdjustQuantity(inventoryItemId: $inventoryItemId, locationId: $locationId, availableQuantity: $availableQuantity) {
+                inventoryLevel {
+                    id
+                    available
+                }
+                userErrors {
+                    field
+                    message
+                }
+            }
+        }
+        GQL;
+
+        $json = $this->client->query($shop, $token, $mutation, [
+            'inventoryItemId' => $inventoryItemId,
+            'locationId' => $locationId,
+            'availableQuantity' => $availableQuantity,
+        ]);
+
+        $errors = $json['data']['inventoryAdjustQuantity']['userErrors'] ?? [];
+        if (!empty($errors)) {
+            throw new ShopifyApiException('Shopify userErrors on inventoryAdjustQuantity', $errors, 422);
+        }
     }
 }

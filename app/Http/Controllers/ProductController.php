@@ -53,4 +53,40 @@ class ProductController extends Controller
             ], Response::HTTP_INTERNAL_SERVER_ERROR);
         }
     }
+
+    public function index(Request $request): JsonResponse
+    {
+        $shop = $request->header('X-Shopify-Shop-Domain');
+        $token = $request->header('X-Shopify-Access-Token');
+
+        if (!$shop || !$token) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Missing Shopify headers.',
+            ], Response::HTTP_UNAUTHORIZED);
+        }
+
+        try {
+            $products = $this->repo->getAllProducts($shop, $token);
+
+            return response()->json([
+                'success' => true,
+                'products' => $products,
+            ]);
+
+        } catch (ShopifyApiException $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'errors' => $e->errors,
+            ], $e->status);
+
+        } catch (\Throwable $e) {
+            report($e);
+            return response()->json([
+                'success' => false,
+                'message' => 'Unexpected server error.',
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
+    }
 }
