@@ -146,11 +146,11 @@ class ShopifyProductService
       /** inventoryAdjustQuantity
      *  https://shopify.dev/docs/api/admin-graphql/2025-07/mutations/inventoryactivate
      */
-    private function setInventory(string $shop, string $token, string $inventoryItemId, string $locationId, int $availableQuantity): void
+    private function setInventory(string $shop, string $token, string $inventoryItemId, string $locationId, int $availableQuantity): array
     {
         $mutation = <<<'GQL'
-        mutation inventoryAdjustQuantity($inventoryItemId: ID!, $locationId: ID!, $availableQuantity: Int!) {
-            inventoryAdjustQuantity(inventoryItemId: $inventoryItemId, locationId: $locationId, availableQuantity: $availableQuantity) {
+        mutation inventoryAdjustQuantity($inventoryItemId: ID!, $locationId: ID!, $available: Int!) {
+            ActivateInventoryItem(inventoryItemId: $inventoryItemId, locationId: $locationId, available: $available) {
                 inventoryLevel {
                     id
                     available
@@ -166,12 +166,14 @@ class ShopifyProductService
         $json = $this->client->query($shop, $token, $mutation, [
             'inventoryItemId' => $inventoryItemId,
             'locationId' => $locationId,
-            'availableQuantity' => $availableQuantity,
+            'available' => $availableQuantity,
         ]);
 
-        $errors = $json['data']['inventoryAdjustQuantity']['userErrors'] ?? [];
+        $errors = $json['data']['inventoryActivate']['userErrors'] ?? [];
         if (!empty($errors)) {
-            throw new ShopifyApiException('Shopify userErrors on inventoryAdjustQuantity', $errors, 422);
+            throw new ShopifyApiException('Shopify userErrors on inventoryActivate', $errors, 422);
         }
+
+        return $json['data']['inventoryActivate']['inventoryLevel'] ?? [];
     }
 }
