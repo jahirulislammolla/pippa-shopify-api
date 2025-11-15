@@ -3,7 +3,6 @@
 namespace App\Providers;
 
 use App\Repositories\ShopifyProductRepository;
-use App\Repositories\ShopifyProductRepositoryInterface;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -13,8 +12,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        $this->app->bind(ShopifyProductRepositoryInterface::class, ShopifyProductRepository::class
-        );
+        $this->app->bind( ShopifyProductRepository::class );
     }
 
     /**

@@ -1,4 +1,4 @@
-# Laravel Shopify Product API (GraphQL 2025-07)
+# Shopify Product API (GraphQL 2025-07)
 
 Shopify Admin GraphQL (2025-07) ব্যবহার করে **Product + Variants + Images** তৈরি করার Laravel REST API।
 **Repository Pattern + DI**, **Form Request Validation**, **Guzzle error handling**, এবং **PHPUnit test** অন্তর্ভুক্ত।
@@ -35,6 +35,8 @@ cd pippa-shopify-api
 composer install
 cp .env.example .env
 php artisan key:generate
+# Create DB Name: pippa-shopify-db for store Shopify Location and reuse it
+php artisan migrate
 php artisan serve
 # http://127.0.0.1:8000
 ```
@@ -58,7 +60,7 @@ php artisan serve
 
 ```json
 {
-  "title": "Cotton T-Shirt Premium",
+  "title": "T-Shirt Premium TT",
   "description": "<p>High quality premium cotton t-shirt</p>",
   "vendor": "My Brand",
   "product_type": "Apparel",
@@ -67,7 +69,6 @@ php artisan serve
      { "name": "Color", "values": ["Red", "Blue"] }
   ],
   "variants": [
-    { "sku": "TSHIRT-SM-RED",  "price": "19.99", "inventory_quantity": 100, "option_values": ["Small", "Red"] },
     { "sku": "TSHIRT-SM-BLUE", "price": "19.99", "inventory_quantity": 50,  "option_values": ["Small", "Blue"] },
     { "sku": "TSHIRT-MD-RED",  "price": "21.99", "inventory_quantity": 75,  "option_values": ["Medium", "Red"] },
     { "sku": "TSHIRT-MD-BLUE", "price": "21.99", "inventory_quantity": 60,  "option_values": ["Medium", "Blue"] },
@@ -89,8 +90,138 @@ php artisan serve
 {
     "success": true,
     "message": "Product created successfully.",
-    "product_id": "gid://shopify/Product/1234567890",
-    "handle": "t-shirt-pro"
+    "response": {
+        "product_id": "gid://shopify/Product/8505346982085",
+        "product": {
+            "id": "gid://shopify/Product/8505346982085",
+            "title": "T-Shirt Premium TT",
+            "options": [
+                {
+                    "id": "gid://shopify/ProductOption/10729882648773",
+                    "name": "Size"
+                },
+                {
+                    "id": "gid://shopify/ProductOption/10729882681541",
+                    "name": "Color"
+                }
+            ]
+        },
+        "options": [
+            {
+                "id": "gid://shopify/ProductOption/10729882648773",
+                "name": "Size"
+            },
+            {
+                "id": "gid://shopify/ProductOption/10729882681541",
+                "name": "Color"
+            }
+        ],
+        "variants": [
+            {
+                "id": "gid://shopify/ProductVariant/45343083921605",
+                "title": "Small / Blue",
+                "inventoryItem": {
+                    "id": "gid://shopify/InventoryItem/47477671821509",
+                    "sku": "TSHIRT-SM-BLUE"
+                },
+                "inventoryQuantity": 50,
+                "selectedOptions": [
+                    {
+                        "name": "Size",
+                        "value": "Small"
+                    },
+                    {
+                        "name": "Color",
+                        "value": "Blue"
+                    }
+                ]
+            },
+            {
+                "id": "gid://shopify/ProductVariant/45343083954373",
+                "title": "Medium / Red",
+                "inventoryItem": {
+                    "id": "gid://shopify/InventoryItem/47477671854277",
+                    "sku": "TSHIRT-MD-RED"
+                },
+                "inventoryQuantity": 75,
+                "selectedOptions": [
+                    {
+                        "name": "Size",
+                        "value": "Medium"
+                    },
+                    {
+                        "name": "Color",
+                        "value": "Red"
+                    }
+                ]
+            },
+            {
+                "id": "gid://shopify/ProductVariant/45343083987141",
+                "title": "Medium / Blue",
+                "inventoryItem": {
+                    "id": "gid://shopify/InventoryItem/47477671887045",
+                    "sku": "TSHIRT-MD-BLUE"
+                },
+                "inventoryQuantity": 60,
+                "selectedOptions": [
+                    {
+                        "name": "Size",
+                        "value": "Medium"
+                    },
+                    {
+                        "name": "Color",
+                        "value": "Blue"
+                    }
+                ]
+            },
+            {
+                "id": "gid://shopify/ProductVariant/45343084019909",
+                "title": "Large / Red",
+                "inventoryItem": {
+                    "id": "gid://shopify/InventoryItem/47477671919813",
+                    "sku": "TSHIRT-LG-RED"
+                },
+                "inventoryQuantity": 40,
+                "selectedOptions": [
+                    {
+                        "name": "Size",
+                        "value": "Large"
+                    },
+                    {
+                        "name": "Color",
+                        "value": "Red"
+                    }
+                ]
+            },
+            {
+                "id": "gid://shopify/ProductVariant/45343084052677",
+                "title": "Large / Blue",
+                "inventoryItem": {
+                    "id": "gid://shopify/InventoryItem/47477671952581",
+                    "sku": "TSHIRT-LG-BLUE"
+                },
+                "inventoryQuantity": 30,
+                "selectedOptions": [
+                    {
+                        "name": "Size",
+                        "value": "Large"
+                    },
+                    {
+                        "name": "Color",
+                        "value": "Blue"
+                    }
+                ]
+            }
+        ],
+        "images": [
+            {
+                "alt": "T-Shirt",
+                "mediaContentType": "IMAGE",
+                "originalSource": "https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png"
+            }
+        ],
+        "inventory_set": false
+    }
 }
 ```
 
@@ -117,7 +248,7 @@ Error shape:
 ## 🧪 Testing
 
 ```bash
-php artisan test
+php artisan test --filter=ShopifyProductRepositoryTest
 ```
 
 Feature test mocked repository ব্যবহার করে endpoint এর happy path যাচাই করে।
@@ -128,11 +259,12 @@ Feature test mocked repository ব্যবহার করে endpoint এর h
 
 ```
 app/
-  DTOs/ (ImageDTO, ProductDTO, VariantDTO)
   Exceptions/ShopifyApiException.php
   Http/
     Controllers/ProductController.php
     Requests/StoreShopifyProductRequest.php
+  Models/
+    ShopifyLocation.php
   Providers/AppServiceProvider.php
   Repositories/
     ShopifyProductRepositoryInterface.php
@@ -140,9 +272,10 @@ app/
   Services/
     ShopifyGraphQLClient.php
     ShopifyProductService.php
+database/migrations/2025_11_14_091552_create_shopify_locations_table.php
 config/shopify.php
 routes/api.php
-tests/Feature/CreateShopifyProductTest.php
+tests/Feature/ShopifyProductRepositoryTest.php
 ```
 
 ---
@@ -151,11 +284,10 @@ tests/Feature/CreateShopifyProductTest.php
 
 **3-step GraphQL orchestration:**
 
-1. `productCreate` → product + variants তৈরি
-    - রেসপন্স থেকে `product.id`, `variant.id` (sku দিয়ে ম্যাপ করুন)
-2. `productCreateMedia` → ইমেজ URL থেকে product media তৈরি
-    - রেসপন্স থেকে `media.id` / `image.id`
-3. `productVariantUpdate` → প্রতিটি variant এ `imageId` সেট
+1. `productCreate` → product + options তৈরি
+    - রেসপন্স থেকে `product` inforamion
+2. `productvariantsbulkcreate` →  variants + ইমেজ URL থেকে product media তৈরি
+    - রেসপন্স থেকে `variants` / `media`
 
 > কিছু API ভার্সনে এক ধাপে ইমেজসহ ভ্যারিয়েন্ট দেয়া সম্ভব—তবু এই ৩-ধাপ পদ্ধতি স্থিতিশীল ও স্পষ্ট।
 
@@ -163,8 +295,13 @@ tests/Feature/CreateShopifyProductTest.php
 
 -   `title`: required|string|max:255
 -   `options`: array<string>
+-   `description` : string
+-   `vendor` : string
+-   `product_type` : string
+-   `options` : array
 -   `variants.*.option_values` length == `options` length
 -   `variants.*.sku`: required
+-   `variants.*.inventory_quantity`: integer
 -   `variants.*.price`: `/^\d+(\.\d{1,2})?$/`
 
 ---
@@ -186,68 +323,11 @@ DI binding: `App\Providers\RepositoryServiceProvider`
 
 ---
 
-## 🧑‍💻 Postman Quick Test (cURL)
+## 📁 Postman Quick Test Root Folder Provide File Upload Your Postman
 
-```bash
-curl -X POST http://127.0.0.1:8000/api/shopify/products   -H "Accept: application/json"   -H "Content-Type: application/json"   -H "X-Shopify-Access-Token: <YOUR_ADMIN_API_TOKEN>"   -H "X-Shopify-Shop-Domain: your-store.myshopify.com"   -d '{
-    "title": "T-Shirt Pro",
-    "options": ["Size","Color"],
-    "variants": [
-      {
-        "sku": "TSHIRT-PRO-S-BLK",
-        "price": "29.99",
-        "inventory_quantity": 25,
-        "option_values": ["S","Black"],
-        "image": {"src":"https://example.com/images/black-s.jpg","alt":"Black Small"}
-      }
-    ]
-  }'
 ```
-
----
-
-## ☁️ Production Deploy (Ubuntu 22.04 + Nginx + PHP-FPM 8.3)
-
-```bash
-sudo apt update && sudo apt -y upgrade
-sudo add-apt-repository ppa:ondrej/php -y && sudo apt update
-sudo apt -y install php8.3 php8.3-fpm php8.3-cli php8.3-mbstring php8.3-xml php8.3-curl php8.3-zip php8.3-intl php8.3-bcmath unzip git nginx
-curl -sS https://getcomposer.org/installer | sudo php -- --install-dir=/usr/local/bin --filename=composer
-
-sudo mkdir -p /var/www/shopify-api && sudo chown -R $USER:www-data /var/www/shopify-api
-cd /var/www/shopify-api
-# git clone <repo> .
-# composer install --no-dev --optimize-autoloader
-# cp .env.example .env && php artisan key:generate
-
-sudo tee /etc/nginx/sites-available/shopify-api.conf >/dev/null <<'NGINX'
-server {
-    listen 80;
-    server_name YOUR_DOMAIN_OR_IP;
-    root /var/www/shopify-api/public;
-    index index.php;
-
-    location / { try_files $uri $uri/ /index.php?$query_string; }
-    location ~ \.php$ {
-        include snippets/fastcgi-php.conf;
-        fastcgi_pass unix:/run/php/php8.3-fpm.sock;
-    }
-    location ~* \.(log|env)$ { deny all; }
-
-    client_max_body_size 20M;
-    sendfile on;
-}
-NGINX
-
-sudo ln -s /etc/nginx/sites-available/shopify-api.conf /etc/nginx/sites-enabled/
-sudo nginx -t && sudo systemctl reload nginx
-sudo chown -R www-data:www-data storage bootstrap/cache
-sudo -u www-data php artisan config:cache && php artisan route:cache
+    📄 Shopify.postman_collection.json
 ```
-
-> ডোমেইন না থাকলে `server_name _;` বা সার্ভার IP দিন। SSL চাইলে পরে Certbot ব্যবহার করুন।
-
----
 
 ## 🧯 Troubleshooting
 
