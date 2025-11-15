@@ -1,0 +1,110 @@
+{
+	"info": {
+		"_postman_id": "f7c96fc5-6529-4998-b53e-a2f9aa78df55",
+		"name": "Shopify",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "23080653",
+		"_collection_link": "https://account-software-team.postman.co/workspace/Account-Software-Team-Workspace~085cff74-4e39-4601-93df-b73fd1e495c9/collection/23080653-f7c96fc5-6529-4998-b53e-a2f9aa78df55?action=share&source=collection_link&creator=23080653"
+	},
+	"item": [
+		{
+			"name": "Product List",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "X-Shopify-Access-Token",
+						"value": "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",
+						"type": "text"
+					},
+					{
+						"key": "X-Shopify-Shop-Domain",
+						"value": "pippa-task-2.myshopify.com",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/shopify/product-list",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"shopify",
+						"product-list"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Products Store",
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Accept",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					},
+					{
+						"key": "X-Shopify-Access-Token",
+						"value": "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",
+						"type": "text"
+					},
+					{
+						"key": "X-Shopify-Shop-Domain",
+						"value": "pippa-task-2.myshopify.com",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"title\": \"Special T-Shirt Premium\",\r\n  \"description\": \"<p>High quality premium cotton t-shirt</p>\",\r\n  \"vendor\": \"My Brand\",\r\n  \"product_type\": \"Apparel\",\r\n  \"options\": [\r\n     { \"name\": \"Size\", \"values\": [\"Small\", \"Medium\", \"Large\"] },\r\n     { \"name\": \"Color\", \"values\": [\"Red\", \"Blue\"] }\r\n  ],\r\n  \"variants\": [\r\n    { \"sku\": \"TSHIRT-SM-RED\",  \"price\": \"19.99\", \"inventory_quantity\": 100, \"option_values\": [\"Small\", \"Red\"] },\r\n    { \"sku\": \"TSHIRT-SM-BLUE\", \"price\": \"19.99\", \"inventory_quantity\": 50,  \"option_values\": [\"Small\", \"Blue\"] },\r\n    { \"sku\": \"TSHIRT-MD-RED\",  \"price\": \"21.99\", \"inventory_quantity\": 75,  \"option_values\": [\"Medium\", \"Red\"] },\r\n    { \"sku\": \"TSHIRT-MD-BLUE\", \"price\": \"21.99\", \"inventory_quantity\": 60,  \"option_values\": [\"Medium\", \"Blue\"] },\r\n    { \"sku\": \"TSHIRT-LG-RED\",  \"price\": \"23.99\", \"inventory_quantity\": 40,  \"option_values\": [\"Large\", \"Red\"] },\r\n    { \"sku\": \"TSHIRT-LG-BLUE\", \"price\": \"23.99\", \"inventory_quantity\": 30,  \"option_values\": [\"Large\", \"Blue\"] }\r\n  ],\r\n  \"images\": [\r\n    {\r\n      \"src\": \"https://cdn.shopify.com/s/files/1/0533/2089/files/placeholder-images-image_large.png\",\r\n      \"alt\": \"T-Shirt\"\r\n    }\r\n  ]\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "http://127.0.0.1:8000/api/shopify/products",
+					"protocol": "http",
+					"host": [
+						"127",
+						"0",
+						"0",
+						"1"
+					],
+					"port": "8000",
+					"path": [
+						"api",
+						"shopify",
+						"products"
+					]
+				}
+			},
+			"response": []
+		}
+	]
+}

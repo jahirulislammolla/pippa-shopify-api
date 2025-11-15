@@ -8,6 +8,7 @@ use App\Http\Requests\StoreShopifyProductRequest;
 use App\Repositories\ShopifyProductRepository;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Http;
 use Symfony\Component\HttpFoundation\Response;
 
 class ProductController extends Controller
@@ -29,13 +30,12 @@ class ProductController extends Controller
         $data = $request->validated();
 
         try {
-            $res = $this->repo->createProductWithVariantsAndImages($data, $shop, $token);
+            $res = $this->repo->createProductWithVariantsAndImages($shop, $token, $data);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Product created successfully.',
-                'product_id' => $res['product_id'],
-                'handle' => $res['handle'],
+                'response' => $res,
             ]);
 
         } catch (ShopifyApiException $e) {
@@ -67,11 +67,30 @@ class ProductController extends Controller
         }
 
         try {
-            $products = $this->repo->getAllProducts($shop, $token);
+            $query = <<<'GQL'
+                query {
+                    shop {
+                        products(first: 20) {
+                            nodes {
+                                id
+                                title
+                            }
+                        }
+                    }
+                }
+                GQL;
+
+            $response = Http::withHeaders([
+                'X-Shopify-Access-Token' => $token,
+                'Content-Type' => 'application/json',
+            ])->post("https://{$shop}/admin/api/2023-10/graphql.json", [
+                'query' => $query
+            ]);
+
 
             return response()->json([
                 'success' => true,
-                'products' => $products,
+                'products' => $response['data']['shop']['products']['nodes'] ?? [],
             ]);
 
         } catch (ShopifyApiException $e) {

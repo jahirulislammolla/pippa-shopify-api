@@ -20,6 +20,9 @@ class StoreShopifyProductRequest extends FormRequest
             'product_type' => ['nullable', 'string', 'max:255'],
 
             'options' => ['required', 'array', 'min:1'],
+            'options.*.name' => ['required', 'string', 'max:100'],
+            'options.*.values' => ['required', 'array', 'min:1'],
+            'options.*.values.*' => ['string', 'max:255'],
 
             'variants' => ['required', 'array', 'min:1'],
             'variants.*.sku' => ['required', 'string', 'max:100'],
@@ -37,37 +40,6 @@ class StoreShopifyProductRequest extends FormRequest
     /**
      * Normalize "options" to names array and keep provided values (if any)
      */
-    protected function prepareForValidation(): void
-    {
-
-        $opts = $this['options'] ?? [];
-
-        // case B: options = [{ name:"Size", values:[{name:"S"}] }, ...]
-        if (is_array($opts) && is_array(reset($opts))) {
-            $names = [];
-            $valuesByIndex = [];
-
-            foreach ($opts as $i => $opt) {
-                $name = $opt['name'] ?? null;
-                $names[] = $name !== '' ? $name : 'Option'.($i+1);
-
-                $vals = [];
-                if (!empty($opt['values']) && is_array($opt['values'])) {
-                    foreach ($opt['values'] as $v) {
-                        // support both {name:"S"} or plain "S"
-                        $vals[] = is_array($v) ? (string)($v['name'] ?? '') : (string)$v;
-                    }
-                }
-                $valuesByIndex[$i] = array_values(array_unique(array_filter($vals)));
-            }
-
-            // replace options with names[], keep provided values in hidden key
-            $this->merge([
-                'options' => $names,
-                '_option_values_from_options' => $valuesByIndex,
-            ]);
-        }
-    }
 
     public function withValidator($validator): void
     {

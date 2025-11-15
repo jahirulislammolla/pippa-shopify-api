@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\ShopifyApiException;
+use App\Models\ShopifyLocation;
 
 class ShopifyProductService
 {
@@ -12,18 +13,18 @@ class ShopifyProductService
      *  https://shopify.dev/docs/api/admin-graphql/2025-07/mutations/productcreate
      */
 
-    public function createProduct(string $shop, string $token, $product): array
+    public function createProduct(string $shop, string $token, array $product): array
     {
-        $mutation = <<<'GQL'
+        // product create mutation query
+        $productCreateMutation = <<<'GQL'
         mutation productCreate($product: ProductCreateInput!) {
-            productCreate($product: $product) {
+            productCreate(product: $product) {
                 product {
                     id
                     title
-                    vendor
                     options {
-                    id
-                    name
+                        id
+                        name
                     }
                 }
                 userErrors {
@@ -34,19 +35,33 @@ class ShopifyProductService
         }
         GQL;
 
-        $productPayload = [
-            'title'           => $product->title,
-            'descriptionHtml'     => $product->description ?? '',
-            'vendor'          => $product->vendor ?? '',
-            'productType'     => $product->productType ?? '',
-            'productOptions'  => $$product->options ?? [],  // <-- এখন values সহ
-        ];
+        // format productOptions
+        $productOptions = [];
+        foreach ($product['options'] as $opt) {
+            $single_formatted_values = [];
+            foreach( $opt['values'] as $val ) {
+                $single_formatted_values[] = ['name' => $val ];
+            }
 
-        $json = $this->client->query($shop, $token, $mutation, [
-            'product' => $productPayload,
+            $productOptions[] = [
+                'name' => $opt['name'] ?? '',
+                'values' => $single_formatted_values ?? [],
+            ];
+        }
+
+        // create product mutation
+        $json = $this->client->query($shop, $token, $productCreateMutation, [
+            'product' =>  [
+                'title'           => $product['title'] ?? '',
+                'descriptionHtml' => $product['description'] ?? '',
+                'vendor'          => $product['vendor'] ?? '',
+                'productType'     => $product['product_type'] ?? '',
+                'productOptions'  => $productOptions,
+            ],
         ]);
 
         $errors = $json['data']['productCreate']['userErrors'] ?? [];
+        // if product create
         if (!empty($errors)) {
             throw new ShopifyApiException('Shopify userErrors on productCreate', $errors, 422);
         }
@@ -55,54 +70,27 @@ class ShopifyProductService
     }
 
 
-    /** productCreateMedia (images)
-     * https://shopify.dev/docs/api/admin-graphql/2025-07/mutations/productcreatemedia
+    /**
+     *  productVariantsBulkCreate
+     *  https://shopify.dev/docs/api/admin-graphql/2025-07/mutations/productvariantsbulkcreate
      */
-    public function attachImages(string $shop, string $token, string $productId, array $images): array
+    public function createBulkVariants(string $shop, string $token, string $productId, array $productVariantInput, array $media): array
     {
-        if (empty($images)) {
-            return [];
-        }
-
-        $mutation = <<<'GQL'
-        mutation productCreateMedia($productId: ID!, $media: [CreateMediaInput!]!) {
-        productCreateMedia(productId: $productId, media: $media) {
-            media { id alt status }
-            mediaUserErrors { field message }
-        }
-        }
-        GQL;
-
-
-        $json = $this->client->query($shop, $token, $mutation, [
-            'productId' => $productId,
-            'media' => $images,
-        ]);
-
-        $mediaErrors = $json['data']['productCreateMedia']['mediaUserErrors'] ?? [];
-        if (!empty($mediaErrors)) {
-            throw new ShopifyApiException('Shopify mediaUserErrors on productCreateMedia', $mediaErrors, 422);
-        }
-
-        return $json['data']['productCreateMedia']['media'] ?? [];
-    }
-
-    /** productVariantUpdate
-     *  https://shopify.dev/docs/api/admin-graphql/latest/mutations/productVariantsBulkCreate
-     */
-    public function createBulkVariants(string $shop, string $token, string $productId, array $productVariantInput): array
-    {
-        $mutation = <<<'GQL'
-        mutation productVariantUpdate($productId: ID!, $variants: [CreateInputVariants!]!) {
-            productVariantsBulkCreate(productId: $productId, variants: $variants) {
+        // mutation query productVariantsBulkCreate
+        $productVariantsBulkMutation = <<<'GQL'
+        mutation productVariantUpdate($productId: ID!, $variants: [ProductVariantsBulkInput!]!, $media: [CreateMediaInput!]) {
+            productVariantsBulkCreate(productId: $productId, variants: $variants, media: $media) {
                 productVariants {
                     id
                     title
-                    inventoryItem
+                    inventoryItem {
+                        id
+                        sku
+                    }
                     inventoryQuantity
                     selectedOptions {
-                    name
-                    value
+                        name
+                        value
                     }
                 }
                 userErrors {
@@ -113,67 +101,79 @@ class ShopifyProductService
         }
         GQL;
 
-        $json = $this->client->query($shop, $token, $mutation, [
+        // create productVariantsBulkCreate
+       $json = $this->client->query($shop, $token, $productVariantsBulkMutation, [
             'productId' => $productId,
             'variants' => $productVariantInput,
+            'media' => $media,
         ]);
 
-        $errors = $json['data']['productVariantUpdate']['userErrors'] ?? [];
+        // occour any error
+        $errors = $json['data']['productVariantsBulkCreate']['userErrors'] ?? [];
+
         if (!empty($errors)) {
-            throw new ShopifyApiException('Shopify userErrors on productVariantUpdate', $errors, 422);
+            return $errors;
         }
 
-        return $json['data']['productVariantUpdate']['productVariant'] ?? [];
+        // success result
+        return $json['data']['productVariantsBulkCreate']['productVariants'] ?? [];
     }
 
-    public function setInventories(string $shop, string $token, array $inventoryMap): bool
-    {
-        $q = <<<'GQL'
-        { shop { primaryLocation { id name } } }
-        GQL;
 
-        $res = $this->client->query($shop, $token, $q);
-        $locationId = $res['data']['shop']['primaryLocation']['id'] ?? null;
-        if (!empty($locationId))
-        {
-            foreach ($inventoryMap as $inventoryItemId => $availableQuantity) {
-                $this->setInventory($shop, $token, $inventoryItemId, $locationId, $availableQuantity);
-            }
-            return true;
-        }
-        return false;
-    }
-      /** inventoryAdjustQuantity
-     *  https://shopify.dev/docs/api/admin-graphql/2025-07/mutations/inventoryactivate
+    /**
+     *  locationAdd
+     *  https://shopify.dev/docs/api/admin-graphql/2025-07/mutations/locationadd
      */
-    private function setInventory(string $shop, string $token, string $inventoryItemId, string $locationId, int $availableQuantity): array
+    public function getOrCreateLocation(string $shop, string $token, $location): array
     {
-        $mutation = <<<'GQL'
-        mutation inventoryAdjustQuantity($inventoryItemId: ID!, $locationId: ID!, $available: Int!) {
-            ActivateInventoryItem(inventoryItemId: $inventoryItemId, locationId: $locationId, available: $available) {
-                inventoryLevel {
-                    id
-                    available
-                }
-                userErrors {
-                    field
-                    message
+        // Get location from database
+        $get_location = ShopifyLocation::where('shop_domain', $shop)->first();
+
+        // if location not exist...then create new location
+        if(!$get_location)
+        {
+            // location create mutation query
+            $location_create_query = <<<'GQL'
+            mutation  productLocationAdd($input: LocationAddInput!) {
+                locationAdd(input: $input) {
+                    location {
+                        id
+                        name
+                    }
                 }
             }
+            GQL;
+
+            // create location
+            $res = $this->client->query($shop, $token, $location_create_query, [
+                'input' => $location,
+            ]);
+
+            $locationId = $res['data']['locationAdd']['location']['id'] ?? null;
+
+            if($locationId)
+            {
+                //create location save database for further use
+                $get_location = ShopifyLocation::updateOrCreate(
+                    [
+                        'shop_domain'         => $shop,
+                        'shopify_location_id' => $locationId,
+                    ],
+                    [
+                        'name'          => $location['name'],
+                        'address1'      => $location['address']['address1'] ?? null,
+                        'city'          => $location['address']['city'] ?? null,
+                        'province_code' => $location['address']['provinceCode'] ?? null,
+                        'country_code'  => $location['address']['countryCode'] ?? null,
+                        'zip'           => $location['address']['zip'] ?? null,
+                    ]
+                );
+            }
         }
-        GQL;
 
-        $json = $this->client->query($shop, $token, $mutation, [
-            'inventoryItemId' => $inventoryItemId,
-            'locationId' => $locationId,
-            'available' => $availableQuantity,
-        ]);
-
-        $errors = $json['data']['inventoryActivate']['userErrors'] ?? [];
-        if (!empty($errors)) {
-            throw new ShopifyApiException('Shopify userErrors on inventoryActivate', $errors, 422);
-        }
-
-        return $json['data']['inventoryActivate']['inventoryLevel'] ?? [];
+        return [
+            'locationId' => $get_location->shopify_location_id ?? null,
+            'location' => $get_location,
+        ];
     }
 }
