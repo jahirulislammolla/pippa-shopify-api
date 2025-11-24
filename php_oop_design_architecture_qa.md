@@ -1,203 +1,193 @@
-# PHP Namespaces, Autoloading, Composer & PSR Standards (Q&A with Explanations)
+# PHP Advanced Interview Questions (1–100)
 
-## 36. PHP namespaces কীভাবে কাজ করে? Global namespace vs sub-namespace example
-### **Answer**
-Namespace হলো PHP-তে class/function/constant গুলিকে logical ভাবে group করা এবং নামের সংঘর্ষ (name collision) প্রতিরোধ করার একটি mechanism।
+## E. Performance, Scaling & Concurrency (66–80)
 
-- **Global namespace**: যেখানে কোনো namespace ঘোষণা নেই।
-- **Sub-namespace**: Nested structure যেখানে `App\Controllers`, `App\Models` ইত্যাদি থাকে।
+### 66. High traffic PHP application এ bottleneck detect করার tools?
+- **Blackfire**, **Tideways**, **Xdebug profiler**, **New Relic/APM**
+- MySQL slow query log, EXPLAIN
+- System tools: top, iostat, strace
+- Techniques: profiling, log tracing, load testing
 
-### **Example**
-```php
-// global namespace
-class User {}
+### 67. PHP session locking কীভাবে কাজ করে?
+- `session_start()` করলে session file এ lock নেয়।
+- Lock release না হওয়া পর্যন্ত অন্য concurrent request block থাকে।
+- সমস্যা: slow response, deadlock risk
+- Fix: `session_write_close()`, Redis session, stateless request
 
-// sub namespace
-namespace App\Models;
-class User {}
+### 68. Long-running worker এ memory leak detection
+- `memory_get_usage()` logging
+- Periodic restarts (Supervisor `--max-requests`)
+- Generators ব্যবহার করা
+- Unset static/global references
+
+### 69. Stateless vs Stateful server
+- Stateful → local session, sticky load balancer দরকার
+- Stateless → JWT, Redis session, easier scaling
+
+### 70. PHP-FPM pm tuning
+- **Static**: best performance, high memory
+- **Dynamic**: balanced
+- **Ondemand**: low traffic, cold start delay
+- Tune: `pm.max_children`, `pm.start_servers`
+
+### 71. Caching strategies
+- In-process cache → one request scope
+- Redis/Memcached → share across servers
+- HTTP Cache/CDN → public GET endpoints
+
+### 72. serialize() vs json_encode()
+- Performance: JSON faster
+- Security: serialize risky (object injection)
+- Portability: JSON universal
+
+### 73. Heavy file logging এর bottleneck reduce
+- Buffered logs
+- Async log queue
+- Syslog
+- Log rotation
+
+### 74. PHP Stream API large file pattern
 ```
-এখন `App\Models\User` এবং `\User` আলাদা entity।
-
----
-
-## 37. Composer এর PSR-4 autoloading কীভাবে কাজ করে? (Internal map creation)
-### **Answer**
-PSR‑4 autoloading class name থেকে namespace prefix + directory map ব্যবহার করে ফাইল locate করে।
-
-### **Step-by-step (“police tracing the suspect”) ব্যাখ্যা**
-1. Composer `composer.json` থেকে `autoload.psr-4` পড়ে
-2. Namespace prefix → folder map তৈরি করে
-3. যখন code এ `new App\Controllers\HomeController` কল হয়:
-   - Composer prefix match করে: `App\\` → `app/`
-   - বাকি class path যোগ করে: `Controllers/HomeController.php`
-   - সম্পূর্ণ path: `app/Controllers/HomeController.php`
-4. Autoloaded class map cache (`vendor/composer/autoload_static.php`) তৈরি হয়
-5. Composer file load করে class define করে
-
----
-
-## 38. PSR-1, PSR-2/PSR-12 coding standard এর মূল原则
-### **PSR‑1 (Basic Coding Standard)**
-- Files MUST use UTF‑8
-- Classes must follow **StudlyCase**
-- Methods must follow **camelCase**
-- Constants must be **UPPER_CASE**
-
-### **PSR‑12 (extended PSR‑2)**
-- 4 spaces indent
-- Opening braces on the next line
-- One class per file
-- Line length ideally ≤ 120
-- Strict namespace + use ordering
-
----
-
-## 39. PSR-3 (Logger Interface) কিভাবে reusable logging solution design করতে সাহায্য করে?
-### **Answer**
-PSR‑3 একটি standard logger interface দেয়: `Psr\Log\LoggerInterface`।
-
-এটির মাধ্যমে:
-- Framework পরিবর্তন করলেও logging code একই থাকে
-- `error()`, `info()`, `debug()` ইত্যাদি common method থাকে
-- Different logger (Monolog, custom logger) সহজেই swap করা যায়
-
-**Benefits:** decoupled, testable, reusable logging system।
-
----
-
-## 40. PSR‑4 vs Classmap autoloading (performance/use case)
-### **PSR‑4**
-- Namespace → directory mapping
-- Development friendly
-- File scan করে runtime map তৈরি করে
-- Large projects = slower
-
-### **Classmap**
-- Composer পুরো codebase scan করে exact map বানায়
-- Fastest autoloading
-- Production build এর জন্য best
-
-### **Use case**
-- PSR‑4 → development
-- Classmap → production optimization
-
----
-
-## 41. Composer dump-autoload কমান্ড কী করে? -o flag মানে কী?
-### **dump-autoload**
-- Autoload map regenerate
-- নতুন class যোগ করলে Composer কে update করে
-
-### **`-o` (optimize)**
-- PSR-4 scan করে classmap তৈরি করে
-- Faster production autoload
-
----
-
-## 42. composer.lock ফাইলের গুরুত্ব
-### **Answer**
-- সমস্ত dependency এর exact version lock করে
-- Production environment এ same version ensure করে
-- Deployment stability ও reproducibility বজায় রাখে
-
-**মোট কথা:** commit না করলে production এ আলাদা version চলে যাওয়ার ঝুঁকি।
-
----
-
-## 43. Version constraint: ^1.2, ~1.2, 1.*, >=1.2 <2.0
-### **Meaning**
-- `^1.2` → `>=1.2 && <2.0` (backwards compatible updates)
-- `~1.2` → `>=1.2 && <2.0` কিন্তু patch-level বেশি flexible
-- `1.*` → সব `1.x`
-- `>=1.2 <2.0` → manually defined constraint
-
----
-
-## 44. Private packages (Git repo, Satis, Packagist alternatives) Composer দিয়ে manage
-### **Methods**
-1. **Private Git Repo** (GitHub/GitLab/Bitbucket)
-   ```json
-   "repositories": [{
-       "type": "vcs",
-       "url": "git@github.com:company/package.git"
-   }]
-   ```
-
-2. **Satis** (self-hosted Packagist clone)
-3. **Private Packagist** service
-
-Private auth token ব্যবহার করে Composer download করে।
-
----
-
-## 45. Large monorepo তে multiple Composer package manage (path repo/workspaces)
-### **Approaches**
-- **Path repositories**
-   ```json
-   "repositories": [{
-       "type": "path",
-       "url": "packages/*"
-   }]
-   ```
-
-- **Composer workspaces/monorepo tools**
-  - Symfony Flex
-  - Laravel "workbench" (Laravel 11)
-  - Yarn/npm-style workspace structure
-
-- **Advantages**
-  - Local development → instant update
-  - Version sync সহজ
-
----
-
-## 46. Namespaced function এবং constant declare করা যায় – কিভাবে?
-### **Example**
-```php
-namespace App\Helpers;
-
-function clean_text($str) {
-    return trim($str);
-}
-
-const APP_VERSION = '1.0.0';
+$h = fopen('big.csv', 'r');
+while(($l = fgets($h)) !== false) process($l);
+fclose($h);
 ```
 
-**কারণ:** global helper pollution এড়াতে এবং autoloadable function তৈরি করতে।
+### 75. foreach এর সাথে heavy array operations optimize
+- Avoid `array_merge` inside loops
+- Use `foreach` with direct assignments
+- Generators
+
+### 76. N+1 query detect & fix
+- Tools: Debugbar, Tideways
+- Fix: Eager load (`with()`), joins
+
+### 77. array_walk vs array_map vs foreach
+- foreach → fastest
+- array_map → slower, functional
+- array_walk → slowest
+
+### 78. Horizontal scaling design
+- Sessions → Redis
+- Cache → Redis/Memcached
+- Files → S3
+- DB read replicas
+
+### 79. Async PHP (Swoole/React) challenges
+- Blocking calls break event loop
+- Library compatibility
+- Debugging harder
+
+### 80. Upload-heavy system architecture
+- Nginx/XSendfile handles transfer
+- PHP only signs URL
+- Store files in S3/GCS
 
 ---
 
-## 47. Autoloading order bug তৈরি করতে পারে – কোন scenario তে?
-### **Scenarios**
-- একই নামের class দুই স্থানে থাকলে
-- Classmap override করে PSR‑4 path
-- Vendor autoload → manual autoload → multiple autoloader conflict
+## F. Security & Best Practices (81–90)
+
+### 81. Prepared statement সর্বদা ১০০% secure?
+- Mostly yes, but edge cases → dynamic column/table names, ORDER BY, LIMIT
+
+### 82. htmlspecialchars() / strip_tags() misuse
+- htmlspecialchar → output escaping
+- strip_tags → bypassable
+- Fix: context-aware escaping
+
+### 83. password_hash() vs custom hashing
+- password_hash uses bcrypt/argon2 + auto salt
+- MD5/SHA1 predictable → broken
+
+### 84. Manual CSRF protection
+- Generate token
+- Store in session
+- Add hidden input
+- Validate on POST
+
+### 85. Secure file upload checklist
+- MIME check
+- Extension whitelist
+- Size limit
+- Store outside webroot
+- Disable execute permission
+- Random filename
+
+### 86. Session fixation & prevention
+- On login: `session_regenerate_id(true)`
+- HttpOnly + SameSite cookies
+
+### 87. unserialize() object injection
+- Dangerous if attacker controls payload
+- Fix: `json_encode()`, or deny classes
+
+### 88. Output encoding vs input validation
+- Primary defence → Output encoding
+
+### 89. display_errors ON leak risk
+- DB credentials, stack traces, paths
+
+### 90. JWT/API token common mistakes
+- Long expiry
+- Store token in localStorage → XSS risk
+- No audience/issuer validation
 
 ---
 
-## 48. Composer এর autoload-dev এর ব্যবহার
-### **Answer**
-- Development dependencies (PHPUnit, Faker, Tools, Seeders)
-- Production autoload এর মধ্যে অন্তর্ভুক্ত হয় না
-- Deployment package ছোট হয়
+## Testing, Tooling & Ecosystem (91–100)
 
----
+### 91. Testable design principles
+- Dependency Injection
+- Pure logic
+- Small units
+- No static-heavy code
 
-## 49. Multiple autoloaders থাকলে order কীভাবে কাজ করে?
-### **Answer**
-- PHP SPL autoload stack এ FIFO order
-- প্রথম autoloader class resolve করলে বাকি গুলো call হয় না
-- ভুল order → class not found অথবা wrong class load
+### 92. Test doubles
+- Stub → return fixed data
+- Mock → interaction expectations
+- Spy → call history tracking
 
----
+### 93. Integration vs Feature vs Unit test
+- Unit → isolated class
+- Feature → controller + service
+- Integration → real DB/services
 
-## 50. Namespaced global helper function design best practice
-- Conflict এড়াতে proper namespace ব্যবহার
-- Single-responsibility function
-- Composer autoload ব্যবহার
-- Avoid global `function_exists()` hacks
-- Clear naming: `Text\clean()`, `Arr\flatten()` এর মতো
+### 94. CI/CD pipeline steps
+- Composer install
+- Lint
+- Static analysis
+- PHPUnit
+- Build
+- Deploy
 
----
+### 95. Static analysis tools benefits
+- Type safety
+- Dead code detection
+- Bug prevention
 
-**End of Document**
+### 96. Coding standards tools
+- Consistent code style
+- Faster code review
+- Fewer conflicts
+
+### 97. Dockerized PHP vs XAMPP/Laragon
+- Docker → reproducible, team-friendly
+- Local stacks → inconsistent
+
+### 98. Legacy PHP upgrade strategy
+- Fix deprecated features
+- Add tests
+- Gradually enable strict types
+- Update dependencies
+
+### 99. Monolith → microservice split
+- Benefits: scale, independent deploy
+- Risks: distributed bugs, network overhead
+
+### 100. Multi-team governance
+- Coding standard
+- Branching strategy
+- PR templates
+- Code review rules
+- Static analysis CI
+
