@@ -191,3 +191,10 @@ fclose($h);
 - Code review rules
 - Static analysis CI
 
+# Laravel Top 100 Interview Questions & Answers
+**আপডেট: December 3, 2025**
+
+---
+
+
+
